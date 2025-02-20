@@ -15,40 +15,52 @@ fn main() {
 
     // Traverse the directory recursively using WalkDir.
     for entry in WalkDir::new(&path) {
-        match entry {
-            Ok(entry) => {
-                let path = entry.path();
-                if path.is_file() {
-                    println!("File: {}", path.display());
-                    // Read file contents as raw bytes.
-                    match fs::read(path) {
-                        Ok(bytes) => {
-                            // Attempt to convert bytes to a UTF-8 string.
-                            match str::from_utf8(&bytes) {
-                                Ok(contents) => {
-                                    println!("Contents:\n{}", contents);
-                                    // Encode the contents using the prebuilt tokenizer.
-                                    let encoding = tokenizer.encode(contents, true)
-                                        .expect("Tokenization failed.");
-                                    println!("Tokens:");
-                                    // Iterate over and print each token.
-                                    for token in encoding.get_tokens() {
-                                        println!("{}", token);
-                                    }
-                                }
-                                Err(_) => {
-                                    println!("File is not valid UTF-8. Skipping...");
-                                }
-                            }
-                        }
-                        Err(e) => {
-                            eprintln!("Could not read {}: {}", path.display(), e);
-                        }
-                    }
-                    println!("---------------------------------------");
-                }
+        let entry = match entry {
+            Ok(entry) => entry,
+            Err(e) => {
+                eprintln!("Error reading entry: {}", e);
+                continue;
             }
-            Err(e) => eprintln!("Error reading entry: {}", e),
+        };
+
+        let path = entry.path();
+
+        if !path.is_file() {
+            continue;
         }
+
+        println!("File: {}", path.display());
+
+        let bytes = match fs::read(path) {
+            Ok(bytes) => bytes,
+            Err(e) => {
+                eprintln!("Could not read {}: {}", path.display(), e);
+                continue;
+            }
+        };
+
+        let contents = match str::from_utf8(&bytes) {
+            Ok(content) => content,
+            Err(_) => {
+                println!("File is not valid UTF-8. Skipping...");
+                continue;
+            }
+        };
+
+        println!("Contents:\n{}", contents);
+
+        let encoding = match tokenizer.encode(contents, true) {
+            Ok(encoding) => encoding,
+            Err(e) => {
+                eprintln!("Tokenization failed: {}", e);
+                continue;
+            }
+        };
+
+        println!("Tokens:");
+        for token in encoding.get_tokens() {
+            println!("{}", token);
+        }
+        println!("---------------------------------------");
     }
 }
